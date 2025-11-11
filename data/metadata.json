@@ -1,0 +1,32 @@
+{
+    "table_name": "kbli_2020",
+    "file_source": "kbli_data.csv",
+    "total_rows": 2710,
+    "columns": {
+        "kbli_id": {
+            "max_length": 5,
+            "null_count": 0,
+            "is_nullable": false,
+            "suggested_db_type": "VARCHAR(50)",
+            "is_unique": true
+        },
+        "level": {
+            "max_length": 14,
+            "null_count": 0,
+            "is_nullable": false,
+            "suggested_db_type": "VARCHAR(50)"
+        },
+        "judul": {
+            "max_length": 178,
+            "null_count": 0,
+            "is_nullable": false,
+            "suggested_db_type": "VARCHAR(255)"
+        },
+        "deskripsi": {
+            "max_length": 3191,
+            "null_count": 0,
+            "is_nullable": false,
+            "suggested_db_type": "TEXT"
+        }
+    }
+}
