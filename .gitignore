@@ -1,1 +1,3 @@
 /pgdata
+data/*.csv
+data/*.geojson
