@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PopulateDemografiSlsCommand extends Command
 {
@@ -33,11 +34,42 @@ class PopulateDemografiSlsCommand extends Command
             DB::table('demografi_sls')->truncate();
             $this->info('demografi_sls table truncated.');
 
+            // --- DIAGNOSTIC LOGGING ---
+            $this->info('Running diagnostics...');
+            Log::info('--- Starting demografi_sls population diagnostics ---');
+
+            $regsosekSample = DB::table('regsosek')->select('kode_prov', 'kode_kab', 'kode_kec', 'kode_desa', 'kode_sls', 'kode_subsls')->first();
+            $muatanSample = DB::table('muatan_subsls')->select('kdprov', 'kdkab', 'kdkec', 'kddesa', 'kdsls', 'kdsubsls')->first();
+
+            Log::info('Regsosek Sample:', (array)$regsosekSample);
+            $this->info('Regsosek Sample: ' . json_encode($regsosekSample));
+            Log::info('Muatan SLS Sample:', (array)$muatanSample);
+            $this->info('Muatan SLS Sample: ' . json_encode($muatanSample));
+
+            $joinCheckQuery = "
+                SELECT COUNT(*) as match_count
+                FROM regsosek AS r
+                JOIN muatan_subsls AS m ON r.kode_prov = m.kdprov
+                                        AND LPAD(r.kode_kab, 2, '0') = m.kdkab
+                                        AND LPAD(r.kode_kec, 3, '0') = m.kdkec
+                                        AND LPAD(r.kode_desa, 3, '0') = m.kddesa
+                                        AND LPAD(r.kode_sls, 4, '0') = m.kdsls
+                                        AND (r.kode_subsls = m.kdsubsls OR (r.kode_subsls = '0' AND m.kdsubsls = ''))
+            ";
+            
+            $matchCount = DB::select($joinCheckQuery)[0]->match_count;
+            $this->info("Diagnostic JOIN Check: Found {$matchCount} matching rows between regsosek and muatan_subsls.");
+            Log::info("Diagnostic JOIN Check: Found {$matchCount} matching rows.");
+            // --- END DIAGNOSTIC ---
+
+            if ($matchCount == 0) {
+                $this->error('No matching rows found. Aborting population. Please check data consistency between regsosek and muatan_subsls tables.');
+                Log::error('Aborted demografi_sls population: No matching rows found in JOIN.');
+                return 1;
+            }
+
             $this->info('Aggregating data from regsosek and inserting into demografi_sls...');
 
-            // This query joins regsosek with muatan_subsls to get the correct idsubsls,
-            // then groups by it to count population (jumlah_penduduk) and households (jumlah_kk).
-            // Note: This relies on the join keys between regsosek and muatan_subsls being correct.
             $query = "
                 INSERT INTO demografi_sls (idsubsls, jumlah_penduduk, jumlah_kk, tahun, kode_desa)
                 SELECT
@@ -49,12 +81,12 @@ class PopulateDemografiSlsCommand extends Command
                 FROM
                     regsosek AS r
                 JOIN
-                    muatan_subsls AS m ON CAST(r.kode_prov AS VARCHAR) = CAST(m.kdprov AS VARCHAR)
-                                        AND CAST(r.kode_kab AS VARCHAR) = CAST(m.kdkab AS VARCHAR)
-                                        AND CAST(r.kode_kec AS VARCHAR) = CAST(m.kdkec AS VARCHAR)
-                                        AND CAST(r.kode_desa AS VARCHAR) = CAST(m.kddesa AS VARCHAR)
-                                        AND CAST(r.kode_sls AS VARCHAR) = CAST(m.kdsls AS VARCHAR)
-                                        AND CAST(r.kode_subsls AS VARCHAR) = CAST(m.kdsubsls AS VARCHAR)
+                    muatan_subsls AS m ON r.kode_prov = m.kdprov
+                                        AND LPAD(r.kode_kab, 2, '0') = m.kdkab
+                                        AND LPAD(r.kode_kec, 3, '0') = m.kdkec
+                                        AND LPAD(r.kode_desa, 3, '0') = m.kddesa
+                                        AND LPAD(r.kode_sls, 4, '0') = m.kdsls
+                                        AND (r.kode_subsls = m.kdsubsls OR (r.kode_subsls = '0' AND m.kdsubsls = ''))
                 WHERE r.r401 IS NOT NULL
                 GROUP BY
                     m.idsubsls, m.kddesa
@@ -66,6 +98,7 @@ class PopulateDemografiSlsCommand extends Command
             } catch (\Exception $e) {
                 $this->error('An error occurred during the database operation:');
                 $this->error($e->getMessage());
+                Log::error('Failed to populate demografi_sls: ' . $e->getMessage());
                 return 1;
             }
 

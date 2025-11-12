@@ -1,22 +1,16 @@
-import HomePage from './pages/HomePage.vue';
-import MapPage from './pages/MapPage.vue';
 import MapLibrePage from './pages/MapLibrePage.vue';
+import OpportunityMapPage from './pages/OpportunityMapPage.vue';
+// Hapus import untuk HomePage dan MapPage jika tidak dipakai
 
 export default [
+  // Rute ini akan menjadi rute utama yang menampilkan Tab Bar
   {
     path: '/',
-    redirect: '/map-libre',
+    component: MapLibrePage, // Halaman yang aktif pertama kali
   },
   {
-    path: '/map',
-    component: MapPage,
+    path: '/opportunity-map',
+    component: OpportunityMapPage,
   },
-  {
-    path: '/map-libre',
-    component: MapLibrePage,
-  },
-  {
-    path: '/home',
-    component: HomePage,
-  }
+  // Hapus rute yang tidak terpakai seperti /home dan /map
 ];

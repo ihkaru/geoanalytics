@@ -58,16 +58,3 @@ Contoh alur hierarki dari data sampel:
         - **`01111`** (Kelompok)
 
 Setiap entri adalah node dalam pohon klasifikasi ini, dan `kbli_id` berfungsi sebagai jalurnya.
-
-## **5. Contoh Perintah SQL (CREATE TABLE)**
-
-Berdasarkan analisis kualitas data, berikut adalah perintah DDL (Data Definition Language) SQL yang direkomendasikan untuk membuat tabel database yang sesuai dengan dataset ini. Skema ini cocok untuk sistem database seperti PostgreSQL atau MySQL.
-
-```sql
-CREATE TABLE kbli_2020 (
-    kbli_id VARCHAR(50) NOT NULL PRIMARY KEY,
-    level VARCHAR(50) NOT NULL,
-    judul VARCHAR(255) NOT NULL,
-    deskripsi TEXT NOT NULL
-);
-```

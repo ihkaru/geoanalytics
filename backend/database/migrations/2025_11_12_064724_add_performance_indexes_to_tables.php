@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('referensi_kbli', function (Blueprint $table) {
-            $table->string('kbli_5_digit')->primary();
-            $table->string('judul_kbli');
-            $table->text('deskripsi_kbli')->nullable();
+        Schema::table('muatan_subsls', function (Blueprint $table) {
+            $table->index('kdkec');
+            $table->index('kddesa');
         });
     }
 
@@ -23,6 +22,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('referensi_kbli');
+        Schema::table('muatan_subsls', function (Blueprint $table) {
+            $table->dropIndex(['kdkec']);
+            $table->dropIndex(['kddesa']);
+        });
     }
 };

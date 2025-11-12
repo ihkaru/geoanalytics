@@ -33,8 +33,9 @@ class GeocodeUsahasCommand extends Command
 
         $usahasToGeocode = DB::table('usahas')
             ->leftJoin('muatan_subsls', function ($join) {
-                $join->on('usahas.kdkec', '=', 'muatan_subsls.kdkec')
-                     ->on('usahas.kddesa', '=', 'muatan_subsls.kddesa');
+                // Use TRIM to handle potential whitespace/padding issues from Varchar(3) vs Varchar(255)
+                $join->on(DB::raw('TRIM(usahas.kdkec)'), '=', DB::raw('TRIM(muatan_subsls.kdkec)'))
+                     ->on(DB::raw('TRIM(usahas.kddesa)'), '=', DB::raw('TRIM(muatan_subsls.kddesa)'));
             })
             ->whereNull('usahas.latitude')
             ->whereNotNull('usahas.alamat')
@@ -65,6 +66,15 @@ class GeocodeUsahasCommand extends Command
         $failCount = 0;
 
         foreach ($usahasToGeocode as $usahaData) {
+            // Detailed log as per user request
+            $logParts = [
+                'KAB' => $usahaData->nmkab ?: 'KOSONG',
+                'KEC' => $usahaData->nmkec ?: 'KOSONG',
+                'DESA' => $usahaData->nmdesa ?: 'KOSONG',
+            ];
+            $this->line("\n---");
+            $this->line("Processing ID: {$usahaData->idsbr} | [KAB: {$logParts['KAB']}, KEC: {$logParts['KEC']}, DESA: {$logParts['DESA']}]");
+
             $geocoded = false;
             $finalAddress = '';
 
@@ -74,13 +84,15 @@ class GeocodeUsahasCommand extends Command
             ]));
             $fullAddress1 = implode(', ', $addressParts1);
             $finalAddress = $fullAddress1; // Store last tried address
+            
+            $this->line("Attempting geocode with: '{$fullAddress1}'");
             $data = $this->tryGeocode($fullAddress1);
 
             if ($data) {
                 $this->updateUsaha($usahaData->idsbr, $data, 1); // Level 1: Full Address
                 $successCount++;
                 $geocoded = true;
-                $this->info("\n[SUCCESS] Geocoded '{$fullAddress1}' (ID: {$usahaData->idsbr}) -> [{$data['lat']}, {$data['lon']}]");
+                $this->info("[SUCCESS] -> [{$data['lat']}, {$data['lon']}]");
             }
 
             // --- Attempt 2: Simpler Regional Address (without alamat) ---

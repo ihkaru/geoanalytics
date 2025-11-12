@@ -6,13 +6,11 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-class RegsosekSeeder extends Seeder
-{
+class RegsosekSeeder extends Seeder {
     /**
      * Run the database seeds.
      */
-    public function run(): void
-    {
+    public function run(): void {
         $this->command->info('Starting Regsosek Seeder...');
 
         $filePath = database_path('data/regsosek.csv');
@@ -30,9 +28,9 @@ class RegsosekSeeder extends Seeder
         // Get total line count for progress bar without loading file into memory
         $lineCount = 0;
         $handle = fopen($filePath, 'r');
-        while(!feof($handle)){
-          fgets($handle);
-          $lineCount++;
+        while (!feof($handle)) {
+            fgets($handle);
+            $lineCount++;
         }
         fclose($handle);
 
@@ -43,7 +41,7 @@ class RegsosekSeeder extends Seeder
         $chunkSize = 500;
         $chunk = [];
         $header = [];
-        
+
         if (($handle = fopen($filePath, 'r')) !== FALSE) {
             $header = fgetcsv($handle); // Read header
             $headerMap = array_flip($header);
@@ -56,7 +54,7 @@ class RegsosekSeeder extends Seeder
                     // $this->command->warn('Skipping row with empty r401.'); // Optional: can be noisy
                     continue; // Skip this row entirely
                 }
-                
+
                 $tgl_lahir = null;
                 try {
                     $thn = $row[$headerMap['r406_thn']];
@@ -69,7 +67,7 @@ class RegsosekSeeder extends Seeder
                     // Ignore date creation errors
                 }
 
-                $getValue = function($key, $isNumeric = false) use ($row, $headerMap) {
+                $getValue = function ($key, $isNumeric = false) use ($row, $headerMap) {
                     $value = $row[$headerMap[$key]] ?? null;
                     if ($value === '\N' || $value === '') {
                         return null;

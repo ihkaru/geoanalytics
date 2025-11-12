@@ -35,7 +35,7 @@ Berikut adalah gambaran alur datanya dari hulu ke hilir:
 
 - Hasil dari job di atas disimpan dalam satu tabel cache yang cepat diakses.
 - **Tabel:** `analisis_zona_cache`
-- **Isinya:** (`idsubsls`, `kbli`, `radius`, `skor_potensi`, `zona`)
+- **Isinya:** (`idsubsls`, `kbli`, `radius`, `skor_potensi`, `zona`, `jumlah_penduduk`, `jumlah_usaha_sekitar`)
 
 ### SERVING (Backend - API Server):
 
@@ -48,6 +48,7 @@ Berikut adalah gambaran alur datanya dari hulu ke hilir:
 - MapLibre menerima Vector Tiles yang ringan.
 - Pengguna memilih KBLI dan Radius dari dropdown.
 - MapLibre menggunakan `expression` untuk mewarnai poligon secara instan di sisi klien (GPU) berdasarkan data `zona` yang sudah ada di dalam tiles.
+- Pengguna mengklik sebuah poligon untuk melihat detail analisisnya.
 
 Alur ini memastikan user experience di frontend tetap instan (< 1 detik), meskipun analisis di backend sangat kompleks dan memakan waktu (dijalankan semalam).
 
@@ -156,6 +157,9 @@ Backend akan berfokus pada Pre-calculation (karena analisis on-the-fly terlalu l
   - `radius_meter` (Kunci)
   - `skor_potensi` (Hasil skor, misal: jumlah penduduk tidak terlayani)
   - `zona` (Hasil klasifikasi, misal: 'Merah', 'Kuning', 'Jenuh', 'Hijau')
+  - `jumlah_penduduk` (Data pendukung untuk popup)
+  - `jumlah_usaha_sekitar` (Data pendukung untuk popup)
+  - `rasio_penduduk_per_usaha` (Data pendukung untuk popup)
 
 #### B. API (Penyaji Data ke Frontend)
 
@@ -169,6 +173,10 @@ Backend akan berfokus pada Pre-calculation (karena analisis on-the-fly terlalu l
 - **API Referensi (Dropdown):**
   - **Endpoint:** `GET /api/referensi-kbli`
   - **Fungsi:** Mengambil data dari tabel `referensi_kbli` untuk mengisi dropdown di UI.
+- **API Detail Zona (Untuk Popup):**
+  - **Endpoint:** `GET /api/zona-detail/{idsubsls}`
+  - **Fungsi:** Mengambil detail data analisis untuk satu zona SLS spesifik.
+  - **Logika:** `SELECT * FROM analisis_zona_cache WHERE idsubsls = ?`. Mengembalikan semua data pendukung untuk ditampilkan di popup.
 
 ### 4.2. Frontend (Framework7 Vue + MapLibre)
 
@@ -204,3 +212,20 @@ Frontend tidak melakukan analisis. Frontend hanya bertugas mengambil tiles dan m
   - Menggunakan **MapLibre Expression** untuk mewarnai layer `layer-sls`.
   - Logika pseudocode-nya: `"Warnai poligon dengan fill-color berdasarkan properties.zona HANYA JIKA properties.kbli_5_digit == selectedKBLI DAN properties.radius_meter == selectedRadius."`
 - **Hasilnya:** Peta akan berubah warna (Merah/Jenuh/Hijau) secara instan (< 1 detik) karena pewarnaan terjadi di GPU client-side.
+
+#### D. Interaktivitas Peta: Popup Detail Zona
+
+- **Trigger:** `map.on('click', 'layer-sls', ...)`
+- **Logika:**
+  1. Pengguna mengklik sebuah poligon pada layer `layer-sls`.
+  2. Ambil `idsubsls` dari properti fitur yang diklik.
+  3. Panggil API `GET /api/zona-detail/{idsubsls}`.
+  4. Setelah data diterima, tampilkan `maplibregl.Popup` di lokasi klik.
+  5. **Isi Popup:** Tampilkan detail analisis dari API, seperti:
+     - ID Wilayah (IDSUBSLS)
+     - Zona Potensi
+     - Skor Potensi
+     - Jumlah Penduduk
+     - Jumlah Usaha Sejenis
+     - Rasio Penduduk per Usaha
+- **Tampilan:** Dapat menggunakan komponen Framework7 di dalam popup jika memungkinkan, atau HTML standar yang diformat dengan baik.

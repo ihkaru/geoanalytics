@@ -16,12 +16,12 @@ return new class extends Migration {
             $table->string('nmsls')->nullable();
             $table->string('nama_ketua')->nullable();
             $table->string('jenis')->nullable();
-            $table->string('kdprov')->nullable();
-            $table->string('kdkab')->nullable();
-            $table->string('kdkec')->nullable();
-            $table->string('kddesa')->nullable();
-            $table->string('kdsls')->nullable();
-            $table->string('kdsubsls')->nullable();
+            $table->string('kdprov', 2)->nullable();
+            $table->string('kdkab', 2)->nullable();
+            $table->string('kdkec', 3)->nullable();
+            $table->string('kddesa', 3)->nullable();
+            $table->string('kdsls', 4)->nullable();
+            $table->string('kdsubsls', 4)->nullable();
             $table->integer('klas')->nullable();
             $table->string('nmprov')->nullable();
             $table->string('nmkab')->nullable();

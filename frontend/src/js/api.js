@@ -19,4 +19,11 @@ export default {
   },
   getUsahaSuggestions(query) {
     return apiClient.get('/usaha/suggestions', { params: { query } });
-  },};
+  },
+  getKbli() {
+    return apiClient.get('/referensi-kbli');
+  },
+  getZonaDetail(idsubsls) {
+    return apiClient.get(`/zona-detail/${idsubsls}`);
+  },
+};

@@ -10,6 +10,10 @@ Route::get('/wilayah/kecamatan', [WilayahController::class, 'kecamatan']);
 Route::get('/geojson/subsls', [WilayahController::class, 'subslsGeojson']);
 Route::get('/usaha/suggestions', [UsahaController::class, 'searchSuggestions']);
 
+Route::get('/referensi-kbli', [WilayahController::class, 'getKbli']);
+Route::get('/peta-tiles/{z}/{x}/{y}', [WilayahController::class, 'getTiles']);
+Route::get('/zona-detail/{idsubsls}', [WilayahController::class, 'getZonaDetail']);
+
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');

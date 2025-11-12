@@ -29,62 +29,71 @@ docker-compose up -d
 docker-compose down
 ```
 
-## Development Environment
+---
 
-The `docker-compose.yml` file is configured to provide a seamless development experience with hot-reloading for both the frontend and backend.
+## Database Restoration from Scratch
 
-- **`frontend` service:** This service builds the `frontend/Dockerfile` and runs the Vite development server using `npm run dev`.
-    - It is accessible directly at **[http://localhost:5173](http://localhost:5173)**.
-    - The `frontend/` directory is mounted as a volume into the container, so any changes you make to the Vue.js source code will trigger an instantaneous update in your browser (Hot Module Replacement).
-    - For frontend development, this is the primary URL you will be working with.
+This guide explains how to set up and populate the entire database from a clean state. This is useful after running `migrate:fresh` or for setting up a new development environment.
 
-- **`backend` service:** This service runs the PHP-FPM process for the Laravel application.
-    - The `backend/` directory is also mounted as a volume, meaning any changes to your PHP code are immediately reflected without needing to rebuild the container.
+**Run these commands sequentially from the project root directory:**
 
-- **`nginx` service:** This acts as the main entry point for the application, accessible at **[http://localhost:8000](http://localhost:8000)**. It routes requests:
-    - API calls to `/api/...` are forwarded to the `backend` service.
-    - Other requests are typically served by Nginx, which has access to the `backend/public` directory.
+### 1. Reset and Create Tables
+This command drops all tables and re-runs all migrations.
+```sh
+docker-compose exec backend php artisan migrate:fresh
+```
 
-In summary, for development, run `docker-compose up -d` and edit the files in the `frontend` or `backend` directories. View frontend changes at `http://localhost:5173` and test API integrations through the main application URL `http://localhost:8000`.
+### 2. Seed Base Data
+This command runs the main seeder, which populates essential tables like `usahas` and `muatan_subsls`.
+```sh
+docker-compose exec backend php artisan db:seed
+```
 
-## Development Conventions
+### 3. Seed `regsosek` Data
+This command populates the large `regsosek` table from its CSV file. This may take some time.
+```sh
+docker-compose exec backend php artisan db:seed --class=RegsosekSeeder
+```
 
-### Frontend
+### 4. Populate `demografi_sls`
+This command aggregates data from `regsosek` and `muatan_subsls` to create the demographic data needed for analysis.
+```sh
+docker-compose exec backend php artisan populate:demografi-sls
+```
 
-The frontend code is located in the `frontend/` directory.
+### 5. Import `peta_sls` Polygons
+This command imports the large GeoJSON file containing SLS polygons into the `peta_sls` table.
+```sh
+docker-compose exec backend php artisan import:peta-sls
+```
 
-- **Code Style:** Code formatting is enforced by [Prettier](https://prettier.io/). To format the code, run:
-  ```sh
-  npm run format
-  ```
-- **Linting:** Code quality is checked with [ESLint](https://eslint.org/). To run the linter, run:
-  ```sh
-  npm run lint
-  ```
-- **Dependencies:** Frontend dependencies are managed with `npm`. Install them with `npm install` inside the `frontend` directory.
+### 6. Restore Geocode Data and Finalize
+This is the final, integrated step. The `--import` flag restores your backed-up geocoding results. The command then runs data cleaning tasks. The `--export` flag saves the final, cleaned state back to your backup file.
+```sh
+docker-compose exec backend php artisan data:fix-usaha --import --export
+```
 
-### Backend
+After these steps, your database will be fully restored and ready for development.
 
-The backend code is located in the `backend/` directory and is a standard Laravel application.
+---
 
-- Follow standard Laravel coding conventions and best practices.
-- Backend dependencies are managed with Composer.
+## Session Summary (2025-11-12)
 
-## Session Summary (2025-11-10)
+### Progress Overview
 
-### Analysis Overview
+- **Data Ingestion:** Successfully created and executed seeders/commands to populate all primary tables required for Phase 2 analysis:
+    - `regsosek`: Populated with ~205k records.
+    - `demografi_sls`: Populated by aggregating `regsosek` data.
+    - `peta_sls`: Populated with ~1.3k SLS polygons from the `Final_SLS_202416104.geojson` file.
+    - `referensi_kbli`: Populated.
+- **Model Creation:** Created all missing Eloquent models (`DemografiSls`, `PetaSls`, `Regsosek`, `ReferensiKbli`, `AnalisisZonaCache`) to align with the database schema, improving code structure and maintainability.
+- **Geocode Backup/Restore Mechanism:**
+    - Created `usaha:export-geocode` command to back up `latitude`, `longitude`, and `geom` data to a CSV file (`database/backups/geocode_backup.csv`).
+    - Created `usaha:import-geocode` command to rapidly restore geocoding results from the backup file after a database migration.
+    - Integrated both commands into `data:fix-usaha` via `--import` and `--export` flags for a streamlined workflow.
+- **Data Quality Dashboard:**
+    - Created a diagnostic view at `/data-quality/usaha` to provide a comprehensive overview of all key tables.
+    - Implemented performance optimizations (caching, index additions, query refactoring) to ensure the dashboard loads quickly despite large datasets.
 
-- **Backend (Laravel):**
-    - Reviewed API routes in `routes/api.php`. Key endpoints identified:
-        - `GET /api/usaha`: Fetches business data, handled by `UsahaController@index`. Supports bounding box and search queries.
-        - `GET /api/usaha/suggestions`: Provides search suggestions, handled by `UsahaController@searchSuggestions`.
-        - `GET /api/wilayah/kecamatan`: Fetches district data, handled by `WilayahController@kecamatan`.
-        - `GET /api/geojson/subsls`: Serves GeoJSON data for sub-SLS areas, handled by `WilayahController@subslsGeojson`.
-    - Inspected migrations, confirming the `usahas` table (`2025_11_06_180158_create_usahas_table.php`) is the primary data source, containing business details and geographic coordinates (latitude, longitude).
-
-- **Frontend (Vue.js):**
-    - Analyzed the main map component: `src/pages/MapPage.vue`.
-    - It uses **Leaflet.js** for map rendering and interaction.
-    - State management is handled by **Pinia**, with `useUsahaStore` and `useWilayahStore` fetching data from the backend API.
-    - The component features dynamic marker loading/caching based on map viewport (`moveend`, `zoomend`), search functionality with suggestions, and a detail popup (`UsahaDetailPopup.vue`).
-    - It attempts to use `leaflet.glify` for WebGL-based point rendering for performance, with a fallback to standard Leaflet canvas markers.
+### Current Status
+All foundational data and tooling required for `spec/phase2.md` are now in place. The database is fully populated, and a robust workflow for data management has been established. The project is ready to proceed with the development of the core analysis logic (`analisis:run-zona` command).
